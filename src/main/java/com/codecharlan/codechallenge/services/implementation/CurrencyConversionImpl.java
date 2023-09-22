@@ -44,7 +44,7 @@ public class CurrencyConversionImpl implements CurrencyConversionService {
 
         return responseEntity;
     }
-    private void loadExchangeRates() {
+    void loadExchangeRates() {
         try {
             BufferedReader reader = new BufferedReader(new FileReader("src/main/resources/exchange_rate.csv"));
             String line;
@@ -107,10 +107,10 @@ public class CurrencyConversionImpl implements CurrencyConversionService {
                         CurrencyConversion result = new CurrencyConversion(sourceCurrency, targetCurrency, amount, convertedAmount);
                         return new ApiResponse<>("Data retrieved Successfully", result, false);
                     } else {
-                        throw new CurrencyConversionNotFound("Conversion rate not available for the specified currencies");
+                        throw new ResourceNotFoundException("Country not found in the response");
                     }
                 } else {
-                    throw new ResourceNotFoundException("Country not found in the response");
+                    throw new CurrencyConversionNotFound("Conversion rate not available for the specified currencies");
                 }
             } else {
                 throw new JSONException("Unexpected response format");

@@ -6,6 +6,8 @@ import com.codecharlan.codechallenge.models.CountryPopulationData;
 import com.codecharlan.codechallenge.services.CityService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.AllArgsConstructor;
+import lombok.Setter;
 import org.json.JSONException;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +19,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-
+@Setter
+@AllArgsConstructor
 @Service
 public class CityServiceImpl implements CityService {
     private final RestTemplate restTemplate = new RestTemplate();
