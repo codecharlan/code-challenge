@@ -1,49 +1,47 @@
 package com.codecharlan.codechallenge.services.implementation;
-import com.codecharlan.codechallenge.services.StateCityService;
 
-import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
+import com.codecharlan.codechallenge.services.StateCityService;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
 
 @Service
 public class StateCityServiceImpl implements StateCityService {
     String citiesEndpoint = "https://countriesnow.space/api/v0.1/countries/cities";
     String stateCitiesEndpoint = "https://countriesnow.space/api/v0.1/countries/state/cities";
+
     @Override
     public JSONObject getCitiesAndState(String country) {
 
         try {
-            HttpClient httpClient = HttpClients.createDefault();
+            RestTemplate restTemplate = new RestTemplate();
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
 
-            HttpPost citiesRequest = new HttpPost(citiesEndpoint);
             JSONObject citiesRequestBody = new JSONObject();
             citiesRequestBody.put("country", country);
-            citiesRequest.setEntity(new StringEntity(citiesRequestBody.toString()));
-            citiesRequest.setHeader("Content-Type", "application/json");
+            HttpEntity<String> citiesRequestEntity = new HttpEntity<>(citiesRequestBody.toString(), headers);
+            ResponseEntity<String> citiesResponseEntity = restTemplate.exchange(citiesEndpoint, HttpMethod.POST, citiesRequestEntity, String.class);
 
-            HttpResponse citiesResponse = httpClient.execute(citiesRequest);
-            if (citiesResponse.getStatusLine().getStatusCode() == 200) {
-                String citiesResponseString = EntityUtils.toString(citiesResponse.getEntity());
+            if (citiesResponseEntity.getStatusCodeValue() == 200) {
+                String citiesResponseString = citiesResponseEntity.getBody();
                 JSONObject citiesData = new JSONObject(citiesResponseString);
 
-                HttpPost stateCitiesRequest = new HttpPost(stateCitiesEndpoint);
                 JSONObject stateCitiesRequestBody = new JSONObject();
                 stateCitiesRequestBody.put("country", country);
-                stateCitiesRequest.setEntity(new StringEntity(stateCitiesRequestBody.toString()));
-                stateCitiesRequest.setHeader("Content-Type", "application/json");
+                HttpEntity<String> stateCitiesRequestEntity = new HttpEntity<>(stateCitiesRequestBody.toString(), headers);
+                ResponseEntity<String> stateCitiesResponseEntity = restTemplate.exchange(stateCitiesEndpoint, HttpMethod.POST, stateCitiesRequestEntity, String.class);
 
-                HttpResponse stateCitiesResponse = httpClient.execute(stateCitiesRequest);
-
-                if (stateCitiesResponse.getStatusLine().getStatusCode() == 200) {
-                    String stateCitiesResponseString = EntityUtils.toString(stateCitiesResponse.getEntity());
+                if (stateCitiesResponseEntity.getStatusCodeValue() == 200) {
+                    String stateCitiesResponseString = stateCitiesResponseEntity.getBody();
                     JSONObject stateCitiesData = new JSONObject(stateCitiesResponseString);
 
                     JSONArray states = stateCitiesData.getJSONArray("data");
@@ -64,5 +62,3 @@ public class StateCityServiceImpl implements StateCityService {
         throw new JSONException("Invalid API response format");
     }
 }
-
-

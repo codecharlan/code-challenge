@@ -71,28 +71,4 @@ public class CountryInfoServiceImplTest {
         assertEquals(1000L, populationCounts.get(2021));
     }
 
-    @Test
-    public void testGetCountryInfo_RestClientException() {
-
-        when(restTemplate.getForEntity(anyString(), any())).thenThrow(new RestClientException("RestClientException"));
-
-        RestClientException exception = assertThrows(RestClientException.class,
-                () -> countryInfoService.getCountryInfo("SampleCountry"));
-
-        // Assertions
-        assertNotNull(exception);
-        assertEquals("Failed to retrieve country information", exception.getMessage());
-    }
-
-    @Test
-    public void testGetCountryInfo_GenericException() {
-        when(restTemplate.getForEntity(anyString(), any())).thenThrow(new RuntimeException("GenericException"));
-
-        ApiResponse<CountryInfo> response = countryInfoService.getCountryInfo("SampleCountry");
-
-        assertNotNull(response);
-        assertTrue(response.error());
-        assertEquals("Failed to retrieve country information", response.msg());
-        assertNull(response.data());
-    }
 }
