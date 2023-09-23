@@ -9,6 +9,7 @@ import com.codecharlan.codechallenge.services.CityService;
 import com.codecharlan.codechallenge.services.CountryInfoService;
 import com.codecharlan.codechallenge.services.CurrencyConversionService;
 import com.codecharlan.codechallenge.services.StateCityService;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.AllArgsConstructor;
 import org.json.JSONObject;
 import org.springframework.http.ResponseEntity;
@@ -41,7 +42,7 @@ public class CountryController {
     }
 
     @PostMapping("/states-and-cities")
-    public ResponseEntity<JSONObject> getStatesAndCitiesInCountry(@RequestBody String country) {
+    public ResponseEntity<JSONObject> getStatesAndCitiesInCountry(@RequestBody String country) throws JsonProcessingException {
         JSONObject combinedData = stateCityService.getCitiesAndState(country);
         return new ResponseEntity<>(combinedData, CREATED);
     }

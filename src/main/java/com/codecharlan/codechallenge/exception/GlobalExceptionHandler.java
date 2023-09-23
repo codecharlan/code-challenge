@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
 
 import static org.springframework.http.HttpStatus.*;
@@ -37,4 +38,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<String>> handleIllegalStateException(CurrencyConversionNotFound e) {
         return new ResponseEntity<>(new ApiResponse<>(e.getLocalizedMessage(), null, true), NOT_FOUND);
     }
+
+    @ExceptionHandler(HttpClientErrorException.class)
+    @ResponseStatus(NOT_FOUND)
+    public ResponseEntity<ApiResponse<String>> handleHttpClientErrorException(HttpClientErrorException e) {
+        return new ResponseEntity<>(new ApiResponse<>(e.getLocalizedMessage(), null, true), NOT_FOUND);
+    }
+
 }

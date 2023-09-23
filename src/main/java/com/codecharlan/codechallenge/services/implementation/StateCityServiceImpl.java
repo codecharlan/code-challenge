@@ -1,64 +1,103 @@
 package com.codecharlan.codechallenge.services.implementation;
-
 import com.codecharlan.codechallenge.services.StateCityService;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Service;
+        import org.json.JSONObject;
+        import org.springframework.http.ResponseEntity;
+        import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
+        import org.springframework.web.client.RestTemplate;
+
+import java.util.Map;
+
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 @Service
+@Slf4j
 public class StateCityServiceImpl implements StateCityService {
-    String citiesEndpoint = "https://countriesnow.space/api/v0.1/countries/cities";
-    String stateCitiesEndpoint = "https://countriesnow.space/api/v0.1/countries/state/cities";
-
+    String parsedCountry;
     @Override
-    public JSONObject getCitiesAndState(String country) {
+    public JSONObject getCitiesAndState(String country) throws JsonProcessingException {
+        JSONObject jsonObject = new JSONObject(country);
+        parsedCountry = jsonObject.getString("country");
+
+        String citiesEndpoint = "https://countriesnow.space/api/v0.1/countries";
 
         try {
             RestTemplate restTemplate = new RestTemplate();
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
 
             JSONObject citiesRequestBody = new JSONObject();
-            citiesRequestBody.put("country", country);
-            HttpEntity<String> citiesRequestEntity = new HttpEntity<>(citiesRequestBody.toString(), headers);
-            ResponseEntity<String> citiesResponseEntity = restTemplate.exchange(citiesEndpoint, HttpMethod.POST, citiesRequestEntity, String.class);
+            citiesRequestBody.put("country", parsedCountry);
+             ResponseEntity<String> citiesResponseEntity = restTemplate.getForEntity(citiesEndpoint, String.class);
 
-            if (citiesResponseEntity.getStatusCodeValue() == 200) {
+            if (citiesResponseEntity.getStatusCode().is2xxSuccessful()) {
                 String citiesResponseString = citiesResponseEntity.getBody();
                 JSONObject citiesData = new JSONObject(citiesResponseString);
 
-                JSONObject stateCitiesRequestBody = new JSONObject();
-                stateCitiesRequestBody.put("country", country);
-                HttpEntity<String> stateCitiesRequestEntity = new HttpEntity<>(stateCitiesRequestBody.toString(), headers);
-                ResponseEntity<String> stateCitiesResponseEntity = restTemplate.exchange(stateCitiesEndpoint, HttpMethod.POST, stateCitiesRequestEntity, String.class);
+                JSONArray dataArray = citiesData.getJSONArray("data");
+                for (int i = 0; i < dataArray.length(); i++) {
+                    JSONObject countryData = dataArray.getJSONObject(i);
+                    String countryName = countryData.getString("country");
 
-                if (stateCitiesResponseEntity.getStatusCodeValue() == 200) {
-                    String stateCitiesResponseString = stateCitiesResponseEntity.getBody();
-                    JSONObject stateCitiesData = new JSONObject(stateCitiesResponseString);
+                    if (parsedCountry.equals(countryName)) {
+                        JSONArray citiesArray = countryData.getJSONArray("cities");
 
-                    JSONArray states = stateCitiesData.getJSONArray("data");
+                        JSONObject response = new JSONObject();
+                        response.put("country", parsedCountry);
+                        response.put("cities", citiesArray);
 
-                    JSONObject response = new JSONObject();
-                    response.put("country", country);
-                    response.put("states", states);
+                        JSONArray statesArray = fetchStatesForCities(restTemplate, citiesArray);
+                        response.put("states", statesArray);
 
-                    return response;
+                        System.out.println(response);
+                        return response;
+                    }
                 }
+
+                JSONObject response = new JSONObject();
+                response.put("country", parsedCountry);
+                response.put("cities", new JSONArray());
+                return response;
             } else {
                 throw new RestClientException("Failed to retrieve data from the endpoints.");
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException("Error processing response");
+        } catch (HttpClientErrorException e) {
+            String responseBody = e.getResponseBodyAsString();
+            ObjectMapper objectMapper = new ObjectMapper();
+            Map errorResponse = objectMapper.readValue(responseBody, Map.class);
+
+            String errorMessage = (String) errorResponse.get("msg");
+            log.info("StateCityServiceImpl getErrorMessage - Same as postman error :: [{}]", errorMessage);
+            throw new HttpClientErrorException(NOT_FOUND, errorMessage);
         }
-        throw new JSONException("Invalid API response format");
+    }
+
+    private JSONArray fetchStatesForCities(RestTemplate restTemplate, JSONArray citiesArray) {
+        String stateCitiesEndpoint = "https://countriesnow.space/api/v0.1/countries/state/cities/q";
+
+        JSONArray statesArray = new JSONArray();
+
+        for (int j = 0; j < citiesArray.length(); j++) {
+            String city = citiesArray.getString(j);
+            JSONObject stateCitiesRequestBody = new JSONObject();
+            stateCitiesRequestBody.put("country", parsedCountry);
+            stateCitiesRequestBody.put("state", city);
+            ResponseEntity<String> stateCitiesResponseEntity = restTemplate.getForEntity(stateCitiesEndpoint + "?state=" + city + "&country=" + parsedCountry, String.class);
+
+
+            if (stateCitiesResponseEntity.getStatusCode().is2xxSuccessful()) {
+                String stateCitiesResponseString = stateCitiesResponseEntity.getBody();
+                JSONObject stateCitiesData = new JSONObject(stateCitiesResponseString);
+                JSONArray states = stateCitiesData.getJSONArray("data");
+                statesArray.put(new JSONObject().put("name", city).put("data", states));
+            } else {
+                throw new RestClientException("Failed to retrieve data from the state cities endpoint for city: " + city);
+            }
+        }
+
+        return statesArray;
     }
 }
