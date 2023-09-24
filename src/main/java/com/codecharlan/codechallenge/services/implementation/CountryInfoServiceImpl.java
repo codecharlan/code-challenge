@@ -1,44 +1,55 @@
 package com.codecharlan.codechallenge.services.implementation;
 
-import com.codecharlan.codechallenge.dtos.response.*;
+import com.codecharlan.codechallenge.dtos.response.ApiResponse;
 import com.codecharlan.codechallenge.models.CountryInfo;
 import com.codecharlan.codechallenge.services.CountryInfoService;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.AllArgsConstructor;
+
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONArray;
-
-import org.springframework.http.*;
+import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
-import org.json.JSONObject;
 
 import java.util.HashMap;
 import java.util.Map;
 
-@AllArgsConstructor
 @Slf4j
+@RequiredArgsConstructor
 @Service
-
 public class CountryInfoServiceImpl implements CountryInfoService {
+
+    private final RestTemplate restTemplate;
+
+    @Value("${base.api.url}")
+    private String baseApiUrl;
+
+    @Value("${api.population.url}")
+    private String populationApiPath;
+
+    @Value("${api.capital.url}")
+    private String capitalApiPath;
+
+    @Value("${api.positions.url}")
+    private String positionsApiPath;
+
+    @Value("${api.currency.url}")
+    private String currencyApiPath;
+
     @Override
     public ApiResponse<CountryInfo> getCountryInfo(String country) {
-        RestTemplate restTemplate = new RestTemplate();
-
-        String populationApiUrl = "https://countriesnow.space/api/v0.1/countries/population/q?country=" + country;
-        String capitalApiUrl = "https://countriesnow.space/api/v0.1/countries/capital/q?country=" + country;
-        String positionsApiUrl = "https://countriesnow.space/api/v0.1/countries/positions/q?country=" + country;
-        String currencyApiUrl = "https://countriesnow.space/api/v0.1/countries/currency/q?country=" + country;
-
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+        String populationApiUrl = baseApiUrl + populationApiPath + "?country=" + country;
+        String capitalApiUrl = baseApiUrl + capitalApiPath + "?country=" + country;
+        String positionsApiUrl = baseApiUrl + positionsApiPath + "?country=" + country;
+        String currencyApiUrl = baseApiUrl + currencyApiPath + "?country=" + country;
 
 
         try {
-            log.info("Making Position API Call");
             ResponseEntity<String> positionsResponse = restTemplate.getForEntity(positionsApiUrl, String.class);
+            log.info("CountryInfoServiceImpl getPositionApiCall :: [{}]", positionsResponse);
             String positionsData = positionsResponse.getBody();
 
             JSONObject position = new JSONObject(positionsData);
@@ -46,11 +57,9 @@ public class CountryInfoServiceImpl implements CountryInfoService {
             int parsedLongData = dataObjectPosition.getInt("long");
             int parsedLatData = dataObjectPosition.getInt("lat");
 
-
-            log.info("Making Currency API Call");
             ResponseEntity<String> currencyResponse = restTemplate.getForEntity(currencyApiUrl, String.class);
+            log.info("CountryInfoServiceImpl getCurrencyApiCall :: [{}]", currencyResponse);
             String currencyData = currencyResponse.getBody();
-            System.out.println(currencyData);
 
             JSONObject currency = new JSONObject(currencyData);
             JSONObject dataObjectCurrency = currency.getJSONObject("data");
@@ -58,10 +67,9 @@ public class CountryInfoServiceImpl implements CountryInfoService {
             String parsedIso2 = dataObjectCurrency.getString("iso2");
             String parsedIso3 = dataObjectCurrency.getString("iso3");
 
-            log.info("Making Population API Call");
             ResponseEntity<String> populationResponse = restTemplate.getForEntity(populationApiUrl, String.class);
+            log.info("CountryInfoServiceImpl getPopulationApiCall :: [{}]", populationResponse);
             String populationData = populationResponse.getBody();
-            System.out.println(populationData);
 
             JSONObject population = new JSONObject(populationData);
             JSONObject dataObject = population.getJSONObject("data");
@@ -76,8 +84,8 @@ public class CountryInfoServiceImpl implements CountryInfoService {
                 parsedPopulationData.put(year, value);
             }
 
-            log.info("Making Capital API Call");
             ResponseEntity<String> capitalResponse = restTemplate.getForEntity(capitalApiUrl, String.class);
+            log.info("CountryInfoServiceImpl getCapitalApiCall :: [{}]", capitalResponse);
             String capitalData = capitalResponse.getBody();
 
             JSONObject capital = new JSONObject(capitalData);
@@ -87,7 +95,6 @@ public class CountryInfoServiceImpl implements CountryInfoService {
             CountryInfo countryInfo = new CountryInfo();
             countryInfo.setCapital(parsedCapitalData);
             countryInfo.setCurrency(parsedCurrencyData);
-            System.out.println(parsedPopulationData);
             countryInfo.setPopulationCounts(parsedPopulationData);
             countryInfo.setLatitude(parsedLatData);
             countryInfo.setLongitude(parsedLongData);
@@ -97,7 +104,7 @@ public class CountryInfoServiceImpl implements CountryInfoService {
             return new ApiResponse<>("Country information loaded successfully", countryInfo, false);
 
         } catch (RestClientException e) {
-             e.printStackTrace();
+            e.printStackTrace();
             throw new RestClientException("Failed to retrieve country information");
         } catch (Exception e) {
             e.printStackTrace();
