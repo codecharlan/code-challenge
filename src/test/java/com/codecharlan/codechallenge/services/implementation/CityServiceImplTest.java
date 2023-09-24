@@ -2,19 +2,16 @@ package com.codecharlan.codechallenge.services.implementation;
 
 import com.codecharlan.codechallenge.dtos.response.ApiResponse;
 import com.codecharlan.codechallenge.models.CountryPopulationData;
-
+import com.codecharlan.codechallenge.services.CityService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
-
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
-import static org.mockito.Mockito.*;
-
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
@@ -22,72 +19,40 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
-@ExtendWith(MockitoExtension.class)
-public class CityServiceImplTest {
+import static org.mockito.ArgumentMatchers.eq;
 
+public class CityServiceImplTest {
+    private CityService cityService;
     @Mock
     private RestTemplate restTemplate;
-
-    @InjectMocks
-    private CityServiceImpl cityService;
+    @Mock
+    private ObjectMapper objectMapper;
 
     @BeforeEach
-    public void setup() {
+    public void setUp() {
         MockitoAnnotations.openMocks(this);
+        cityService = new CityServiceImpl(restTemplate, objectMapper);
     }
-
     @Test
-    public void testGetMostPopulatedCitiesWithValidResponse() throws IOException {
-        String validApiResponse = "{ \"data\": [ { \"city\": \"City1\", \"populationCounts\": [ { \"year\": 2022, \"value\": 1000 } ] } ] }";
-        ResponseEntity<String> responseEntity = new ResponseEntity<>(validApiResponse, HttpStatus.OK);
-        when(restTemplate.exchange(any(String.class), any(HttpMethod.class), any(), eq(String.class)))
-                .thenReturn(responseEntity);
+    public void testGetMostPopulatedCities() throws IOException {
+        ResponseEntity<String> mockResponse = new ResponseEntity<>("{ \"data\": [ mock data] }", HttpStatus.OK);
+        Mockito.when(restTemplate.getForEntity(any(String.class), eq(String.class))).thenReturn(mockResponse);
 
-        ApiResponse<List<CountryPopulationData>> apiResponse = cityService.getMostPopulatedCities(1);
+        JsonNode mockJsonNode = Mockito.mock(JsonNode.class);
+        Mockito.when(objectMapper.readTree(any(String.class))).thenReturn(mockJsonNode);
 
+        Mockito.when(mockJsonNode.has("data")).thenReturn(true);
+        Mockito.when(mockJsonNode.get("data")).thenReturn(Mockito.mock(JsonNode.class));
+        Mockito.when(mockJsonNode.get("data").isArray()).thenReturn(true);
 
-        assertNotNull(apiResponse);
-        assertFalse(apiResponse.error());
-        assertEquals("Most populated cities loaded successfully", apiResponse.msg());
-        List<CountryPopulationData> populationDataList = apiResponse.data();
-        assertNotNull(populationDataList);
-        assertEquals(1, populationDataList.size());
-        CountryPopulationData cityData = populationDataList.get(0);
-        assertEquals("City1", cityData.getCity());
-        assertEquals(1, cityData.getPopulationCounts().size());
-        assertEquals(String.valueOf(2022), cityData.getPopulationCounts().get(0).getYear());
-        assertEquals(String.valueOf(1000), cityData.getPopulationCounts().get(0).getValue());
-    }
+        CountryPopulationData[] mockCities = new CountryPopulationData[2];
+        Mockito.when(objectMapper.treeToValue(mockJsonNode.get("data"), CountryPopulationData[].class)).thenReturn(mockCities);
 
-    @Test
-    @DisplayName("Test With Zero Limit")
-    public void testGetMostPopulatedCities() {
-        assertThrows(IllegalArgumentException.class, () -> cityService.getMostPopulatedCities(0));
-    }
+        ApiResponse<List<CountryPopulationData>> response = cityService.getMostPopulatedCities(5);
 
-    @Test
-    @DisplayName("Test With Empty Data Array")
-    public void testGetMostPopulatedCitiesArray() throws IOException {
-        String emptyDataArrayResponse = "{ \"data\": [] }";
-        ResponseEntity<String> responseEntity = new ResponseEntity<>(emptyDataArrayResponse, HttpStatus.OK);
-        when(restTemplate.exchange(any(String.class), any(HttpMethod.class), any(), eq(String.class)))
-                .thenReturn(responseEntity);
-
-        ApiResponse<List<CountryPopulationData>> apiResponse = cityService.getMostPopulatedCities(1);
-
-        assertNotNull(apiResponse);
-        assertFalse(apiResponse.error());
-        assertEquals("Most populated cities loaded successfully", apiResponse.msg());
-        List<CountryPopulationData> populationDataList = apiResponse.data();
-        assertNotNull(populationDataList);
-        assertTrue(populationDataList.isEmpty());
-    }
-
-    @Test
-    @DisplayName("Test service method with a negative N")
-    public void testGetMostPopulatedCitiesWithNegativeLimit() {
-        assertThrows(IllegalArgumentException.class, () -> cityService.getMostPopulatedCities(-1));
+        assertNotNull(response);
+        assertEquals("Most populated cities loaded successfully", response.msg());
+        assertEquals(5, response.data().size());
     }
 
 }

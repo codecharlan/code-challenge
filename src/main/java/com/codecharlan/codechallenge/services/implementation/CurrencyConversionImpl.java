@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONException;
@@ -26,6 +27,7 @@ import java.math.BigDecimal;
 import java.util.*;
 @Slf4j
 @RequiredArgsConstructor
+@Setter
 @Service
 
 
@@ -49,11 +51,15 @@ public class CurrencyConversionImpl implements CurrencyConversionService {
         headers.setContentType(MediaType.APPLICATION_JSON);
         return headers;
     }
-    private ResponseEntity<String> sendGetRequest(String url) {
+    public ResponseEntity<String> sendGetRequest(String url) {
         HttpEntity<?> requestEntity = new HttpEntity<>(createHeaders());
 
         return restTemplate.exchange(
                 url, HttpMethod.GET, requestEntity, String.class);
+    }
+    public Map<String, Double> getExchangeRates() {
+        log.info("For Testing purposes");
+        return exchangeRates;
     }
 
     private void loadExchangeRates() {
