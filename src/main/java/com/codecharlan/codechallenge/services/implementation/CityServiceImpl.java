@@ -1,66 +1,63 @@
 package com.codecharlan.codechallenge.services.implementation;
 
-import com.codecharlan.codechallenge.dtos.response.ApiResponse;
-import com.codecharlan.codechallenge.utils.CityComparator;
-import com.codecharlan.codechallenge.models.CountryPopulationData;
 import com.codecharlan.codechallenge.services.CityService;
+import com.codecharlan.codechallenge.dtos.response.ApiResponse;
+import com.codecharlan.codechallenge.models.CountryPopulationData;
+import com.codecharlan.codechallenge.utils.CityComparator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.AllArgsConstructor;
-import lombok.Setter;
-import org.json.JSONException;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
-@Setter
-@AllArgsConstructor
+import java.util.*;
+@RequiredArgsConstructor
 @Service
 public class CityServiceImpl implements CityService {
-    private final RestTemplate restTemplate = new RestTemplate();
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper;
 
+    @Value("${base.api.url}")
+    private String baseApiUrl;
+    private final List<String> countries = Arrays.asList("Italy", "New Zealand", "Ghana");
     @Override
     public ApiResponse<List<CountryPopulationData>> getMostPopulatedCities(int N) {
         if (N <= 0) {
             throw new IllegalArgumentException("N must be a positive integer");
         }
-        String apiUrl = "https://countriesnow.space/api/v0.1";
-        String cityApiUrl = apiUrl + "/countries/population/cities?sortBy=population&order=desc&limit=" + N;
 
-        ResponseEntity<String> responseEntity = restTemplate.exchange(
-                cityApiUrl, HttpMethod.GET, null, String.class);
+        List<CountryPopulationData> collatedCountryPopulationData = new ArrayList<>();
 
-        String responseJson = responseEntity.getBody();
+        for (String country : countries) {
+            String apiUrl = baseApiUrl + "/countries/population/cities/filter/q?country="+country+"&limit=1000&order=dsc";
+            ResponseEntity<String> responseEntity = restTemplate.getForEntity(
+                    apiUrl, String.class);
 
-        try {
-            JsonNode rootNode = objectMapper.readTree(responseJson);
+            String responseJson = responseEntity.getBody();
 
-            if (rootNode.has("data") && rootNode.get("data").isArray()) {
-                JsonNode dataArray = rootNode.get("data");
+            try {
+                JsonNode rootNode = objectMapper.readTree(responseJson);
 
-                CountryPopulationData[] cities = objectMapper.treeToValue(dataArray, CountryPopulationData[].class);
+                if (rootNode.has("data") && rootNode.get("data").isArray()) {
+                    JsonNode dataArray = rootNode.get("data");
 
-                List<CountryPopulationData> sortedCities = new ArrayList<>(Arrays.asList(cities));
+                    CountryPopulationData[] cities = objectMapper.treeToValue(dataArray, CountryPopulationData[].class);
 
-                sortedCities.sort(new CityComparator());
-
-                List<CountryPopulationData> collatedCountryPopulationData = sortedCities.stream().limit(N).collect(Collectors.toList());
-
-                return new ApiResponse<>("Most populated cities loaded successfully", collatedCountryPopulationData, false);
-            } else {
-                throw new JSONException ("Invalid API response format");
-
+                    collatedCountryPopulationData.addAll(Arrays.asList(cities));
+                } else {
+                    throw new IOException("Invalid API response format");
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+                throw new RuntimeException("Invalid API response format");
             }
-        } catch (IOException e) {
-            e.printStackTrace();
-            throw new JSONException ("Invalid API response format");
         }
+
+        collatedCountryPopulationData.sort(new CityComparator());
+
+        return new ApiResponse<>("Most populated cities loaded successfully", collatedCountryPopulationData.subList(0, N), false);
     }
 }
