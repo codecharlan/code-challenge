@@ -1,6 +1,5 @@
 package com.codecharlan.codechallenge.services.implementation;
 
-import com.codecharlan.codechallenge.services.StateCityService;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.jupiter.api.BeforeEach;

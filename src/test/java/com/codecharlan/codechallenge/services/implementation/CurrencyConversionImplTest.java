@@ -1,21 +1,16 @@
 package com.codecharlan.codechallenge.services.implementation;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.*;
 import org.springframework.http.*;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.File;
 import java.io.IOException;
-
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -25,8 +20,6 @@ public class CurrencyConversionImplTest {
     private RestTemplate restTemplate;
     @InjectMocks
     private CurrencyConversionImpl currencyConversion;
-
-    private ObjectMapper objectMapper;
 
 
     @BeforeEach
@@ -44,10 +37,6 @@ public class CurrencyConversionImplTest {
 
         currencyConversion.setExchangeRateFile(exchangeRateFile.getAbsolutePath());
         currencyConversion.initializeExchangeCalculation();
-
-        restTemplate = mock(RestTemplate.class);
-        objectMapper = new ObjectMapper();
-        currencyConversion = new CurrencyConversionImpl(restTemplate, objectMapper);
     }
     @Test
     public void testInitializeExchangeCalculation() {
@@ -68,6 +57,7 @@ public class CurrencyConversionImplTest {
         assertEquals(mockResponse, response.getBody());
         verify(restTemplate, times(1)).exchange(eq(testUrl), eq(HttpMethod.GET), any(), eq(String.class));
     }
+
     @Test
     public void testCreateHeaders() {
         HttpHeaders headers = currencyConversion.createHeaders();
