@@ -46,7 +46,7 @@ public class CurrencyConversionImpl implements CurrencyConversionService {
     public void initializeExchangeCalculation() {
         loadExchangeRates();
     }
-    private HttpHeaders createHeaders() {
+    public HttpHeaders createHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         return headers;
@@ -136,4 +136,5 @@ public class CurrencyConversionImpl implements CurrencyConversionService {
             throw new RuntimeException("Error processing response");
         }
     }
+
 }
